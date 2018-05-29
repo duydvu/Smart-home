@@ -150,11 +150,12 @@ void loop() {
       if (msg_from_stm32 == "on\n" || msg_from_stm32 == "off\n") {
         Serial.println("Feed back OK!");
         Serial.println("MQTT published!");
-//        client.publish("espToServer", msg_from_stm32 == "on\n" ? "ON" : "OFF");
+        client.publish("espToServer", msg_from_stm32 == "on\n" ? "ON" : "OFF");
       }
     }
     else if (msg_from_stm32 == "error\n") {
-      Serial.println("Error!");
+      Serial.println("control error!");
+       client.publish("espToServer", "error");
     }
 
     msg_from_stm32 = "";
