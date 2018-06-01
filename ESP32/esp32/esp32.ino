@@ -3,18 +3,18 @@
 #include <HardwareSerial.h>
 
 #define TOUCH 4
-#define touchRange 20
+#define touchRange 30
 
 HardwareSerial MySerial(1);
 
 /* change it with your ssid-password */
-const char* ssid = "gr5 2017";
-const char* password = "12345678";
+const char* ssid = "SolarBKSES Guest";
+const char* password = "SolarCafe";
 /* this is the IP of PC/raspberry where you installed MQTT Server */
-const char* mqtt_server  = "192.168.43.48";
-const int   port         = 2000;
-//const char* mqttUser     = "vhnyvxsu";
-//const char* mqttPassword = "vVA4tmFkLz-k";
+const char* mqtt_server  = "m12.cloudmqtt.com";
+const int   port         = 12036;
+const char* mqttUser     = "ulwrtaoc";
+const char* mqttPassword = "SUzhOrzguPJ9";
 /*LED GPIO pin*/
 const char  led          = 12;
 long        lastMsg = 0;
@@ -35,10 +35,10 @@ bool sendCalib(uint16_t (*touchRead)(uint8_t)) {
     continue;
   }
   unsigned long time_touch = millis() - touch_begin;
-  if (time_touch > 1000) {
-    Serial.print("Time: ");
-    Serial.println(time_touch);
-  }
+//  if (time_touch > 1000) {
+//    Serial.print("Time: ");
+//    Serial.println(time_touch);
+//}
   if (time_touch > 3000) return 1;
   else return 0;
 }
@@ -64,7 +64,7 @@ void mqttconnect() {
     String clientId = "ESP32Client";
     /* connect now */
     //, mqttUser, mqttPassword
-    if (client.connect(clientId.c_str())) {
+    if (client.connect(clientId.c_str(), mqttUser, mqttPassword)) {
       Serial.println("connected");
       /* subscribe topic with default QoS 0*/
       client.subscribe("ESP32");
@@ -86,12 +86,12 @@ void setup() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
-//  WiFi.begin(ssid, password);
+  WiFi.begin(ssid, password);
 
-//  while (WiFi.status() != WL_CONNECTED) {
-//    delay(500);
-//    Serial.print(".");
-//  }
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
   /* set led as output to control led on-off */
   pinMode(led, OUTPUT);
 
@@ -101,29 +101,30 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   /* configure the MQTT server with IPaddress and port */
-//  client.setServer(mqtt_server, port);
+  client.setServer(mqtt_server, port);
   /* this receivedCallback function will be invoked
     when client received subscribed topic */
-//  client.setCallback(receivedCallback);
+  client.setCallback(receivedCallback);
   /*start DHT sensor */
 
   //store time' begining
 
 }
 void loop() {
+ // MySerial.print("on\n");
   /* if client was disconnected then try to reconnect again */
-//  if (!client.connected()) {
-//    mqttconnect();
-//  }
+  if (!client.connected()) {
+    mqttconnect();
+  }
   /* this function will listen for incomming
     subscribed topic-process-invoke receivedCallback */
-//  client.loop();
+  client.loop();
 
   if (touchRead(TOUCH) < touchRange && state == false) {
     //set calip
     if (sendCalib(touchRead)) {
-      Serial.println("calib");
-      MySerial.print("calib");
+      Serial.println("calib\n");
+      MySerial.print("calib\n");
     }
     // Toggle
     else {
@@ -139,15 +140,17 @@ void loop() {
 
   if (MySerial.available()) {
     char data = 0;
+    unsigned long uart_begin = millis();
     while (MySerial.available()) {
       data = MySerial.read();
       msg_from_stm32 += data;
     }
     if (data == '\n') {
+      unsigned long uart_time = millis() - uart_begin;
       Serial.print("Message from STM32: ");
       Serial.println(msg_from_stm32);
 
-      if (msg_from_stm32 == "on\n" || msg_from_stm32 == "off\n") {
+      if ((msg_from_stm32 == "on\n" || msg_from_stm32 == "off\n") && (uart_begin < 10000)) {
         Serial.println("Feed back OK!");
         Serial.println("MQTT published!");
         client.publish("espToServer", msg_from_stm32 == "on\n" ? "ON" : "OFF");
@@ -157,7 +160,7 @@ void loop() {
       Serial.println("control error!");
        client.publish("espToServer", "error");
     }
-
+    data = '\0';
     msg_from_stm32 = "";
   }
 
