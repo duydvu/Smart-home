@@ -3,13 +3,13 @@
 #include <HardwareSerial.h>
 
 #define TOUCH 4
-#define touchRange 30
+#define touchRange 40
 
 HardwareSerial MySerial(1);
 
 /* change it with your ssid-password */
-const char* ssid = "SolarBKSES Guest";
-const char* password = "SolarCafe";
+const char* ssid = "netfpga";
+const char* password = "ktmt201_c5";
 /* this is the IP of PC/raspberry where you installed MQTT Server */
 const char* mqtt_server  = "m12.cloudmqtt.com";
 const int   port         = 12036;

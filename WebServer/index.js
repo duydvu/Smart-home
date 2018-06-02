@@ -1,119 +1,128 @@
-const express = require("express")
-const app = express()
-const bodyParser = require("body-parser")
-const passport = require("passport")
-const LocalStrategy = require("passport-local").Strategy
-const fs = require("fs")
-const session = require("express-session")
-const pg = require("pg")
-const Users = require("./db.js")
-const bcrypt = require("bcrypt-nodejs")
-const router = express.Router()
-const mqtt = require("mqtt")
+var app = require('express')(3000);
+var server = require('http').createServer(app);
+var io = require('socket.io')(3001);
+var express = require("express")
+var ip = require("ip")
+const mqtt = require('mqtt')
 var client = mqtt.connect({
-    host: "m13.cloudmqtt.com",
-    port: 10091,
-    username: "vhnyvxsu",
-    password: "vVA4tmFkLz-k"
+    host: "m12.cloudmqtt.com",
+    port: 12036
+    ,
+    username: "ulwrtaoc",
+    password: "SUzhOrzguPJ9"
 })
 
 client.on('connect', function () {
-    console.log('hello');
-    client.publish('ESP32', '2');
-    client.subscribe('mqttlens', function (topic, message) {
-        console.log(message);
+    console.log('mqtt connected!');
+    client.subscribe('espToServer',function(data){
+        console.log(data+"aaa");
     });
 })
 
-// client.on('message', function (topic, message) {
-//     // message is Buffer
-//     console.log(message.toString())
-//     client.end()
-//   })
 
-var urlencodedParser = bodyParser.urlencoded({ extended: true })
+app.use(function(req, res, next) { //allow cross origin requests
+    var allowedOrigins = ["192.168.43.48:3000", "192.168.37.1"];
+    var origin = req.headers.origin;
+    console.log(origin);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader("Access-Control-Allow-Methods", "POST, PUT, OPTIONS, DELETE, GET");
+    res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.setHeader("Access-Control-Allow-Credentials", true);
+    next();
+  });
 
-app.use(bodyParser.json());
+
+client.on('message', function (topic, message) {
+    console.log(message.toString() + 'zzzz');
+    timeOut = false;
+    io.sockets.emit("serverToWeb", message.toString());
+})
+
 app.use(express.static("public"))
-app.use(session({
-    secret: "secret",
-    saveUninitialized: true,
-    resave: true
-}))
-
-app.use(urlencodedParser)
-app.use(passport.initialize())
-app.use(passport.session())
-
-
-app.listen(3000, function () {
-    console.log("server started")
-})
-
-app.set("views", "./views")
 app.set("view engine", "ejs")
+app.set("views", "./views")
 
-app.get("/", function (req, res) {
-    res.render("home.ejs")
+var tf = false;
+var timeOn = "";
+var tfOn = false;
+var timeOff = "";
+var tfOff = false;
+var timeOut = true;
+
+app.get('/getInitial', function(req, res){
+    res.send({tf: tf, timeOn: timeOn, tfOn: tfOn, tfOff: tfOff, timeOff: timeOff});
 })
 
-app.get("/login", function (req, res) {
-    res.render("login.ejs")
-})
-app.post("/login", passport.authenticate("local", { failureRedirect: "/login", successRedirect: "/loginSuccess" }))
 
-app.get("/loginSuccess", function (req, res) {
-    res.render("loginSuccess.ejs")
-})
-
-passport.use(new LocalStrategy({
-    usernameField: "username",
-    passwordField: "password"
-},
-    function (username, password, done) {
-        Users.find({
-            where: {
-                username: username
-            }
-        })
-            .then(user => {
-                if (user && user.password == password) {
-                    return done(null, user);
-
-                }
-                else { console.log("end ned"); return done(null, false); }
-            })
-            .catch(function (err) {
-                console.log(err.stack);
-                return done(err);
-            })
-    }
-))
-
-passport.serializeUser(function (user, done) {
-    done(null, user.id);
+io.on('connection', function (socket) {
+    console.log("co nguoi ket noi")
+    // socket.on("buttonsenddata", function(data){
+    //     console.log(data)
+    //     io.sockets.emit("serversendbutton", data)
+    //     client.publish('ESP32',data)
+    // })
+    // client.on("message",function(data){
+    //     console.log(data.toString.toString()+"console at web");
+    //     io.sockets.emit("serverToWeb",data.toString());
+    // })
+    
+    socket.on("webToServer", function (data) {
+        var a, b;
+        console.log(data);
+        if (data.status == 'ON') {
+            client.publish('ESP32', "ON");
+            tf = true;
+            timeOut = true;
+            setTimeout(() => {
+                if(timeOut)
+                    io.sockets.emit("serverToWeb","OFF");
+            }, 5000);
+        }
+        else if (data.status == 'OFF') {
+            client.publish('ESP32', "OFF");
+            tf = false;
+            timeOut = true;
+            setTimeout(() => {
+                if(timeOut)
+                    io.sockets.emit("serverToWeb","ON");
+            }, 5000);
+        }
+        else if (data.status == 'setTurnOn') {
+            a = setTimeout(() => {
+                client.publish('ESP32', "ON");
+                io.sockets.emit("serverToWeb", 'successTurnOn');
+                console.log("aaaaa");
+            }, data.time)
+            timeOn = data.timeOn;
+            var x = {status: 'setTurnOn', timeOn: timeOn};
+            io.sockets.emit("serverToWeb", x);
+            tfOn = true;
+        }
+        else if (data.status == 'setTurnOff') {
+            b = setTimeout(() => {
+                client.publish('ESP32', "OFF");
+                io.sockets.emit("serverToWeb", 'successTurnOff');
+            }, data.time)
+            timeOff = data.timeOff;
+            var x = {status: 'setTurnOff', timeOff: timeOff};
+            io.sockets.emit("serverToWeb", x);
+            tfOff = true;
+        }
+        else if (data.status == 'cancelTurnOn'){
+            clearTimeout(a);
+            var x = {status: 'cancelTurnOn'};
+            io.sockets.emit("serverToWeb", x);
+            tfOn = false;
+        }
+        else if (data.status == 'cancelTurnOff'){
+            clearTimeout(b);
+            var x = {status: 'cancelTurnOff'};
+            io.sockets.emit("serverToWeb", x);
+            tfOff = false;
+        }
+        io.sockets.emit("serverToWeb", data);
+    })
 });
+console.log("Server nodejs started")
 
-passport.deserializeUser(function (id, done) {
-    Users.findById(id)
-        .then(user => {
-            done(null, user);
-        }).catch(function (err) {
-            console.log(err);
-        })
-});
-
-app.get("/signUp", function (req, res) {
-    res.render("signUp.ejs")
-})
-
-app.post("/signUp", urlencodedParser, function (req, res) {
-    const username = req.body.usernameSign
-    const password = req.body.passwordSign
-    Users.create({
-        username: username,
-        password: password
-    }).then(() => { res.render("signUpSuccess.ejs") })
-        .catch(err => res.render("signUp.ejs"))
-
-})
+app.listen(3000);
