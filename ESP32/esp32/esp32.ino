@@ -2,8 +2,9 @@
 #include <PubSubClient.h>
 #include <HardwareSerial.h>
 
-#define TOUCH 4
-#define touchRange 40
+#define TOUCH 22
+#define touchRange 30
+#define TIME_OUT_CALIB 3000
 
 HardwareSerial MySerial(1);
 
@@ -11,37 +12,40 @@ HardwareSerial MySerial(1);
 const char* ssid = "netfpga";
 const char* password = "ktmt201_c5";
 /* this is the IP of PC/raspberry where you installed MQTT Server */
-const char* mqtt_server  = "m12.cloudmqtt.com";
-const int   port         = 12036;
-const char* mqttUser     = "ulwrtaoc";
-const char* mqttPassword = "SUzhOrzguPJ9";
+const char* mqtt_server  = "115.79.27.129";
+const int   port         = 9015;
+//const char* mqttUser     = "ulwrtaoc";
+//const char* mqttPassword = "SUzhOrzguPJ9";
 /*LED GPIO pin*/
 const char  led          = 12;
 long        lastMsg = 0;
 char        msg[20];
 String      msg_from_stm32 = "";
 bool state = false, light = false;
+int preTouch = 0;
+int counter = 0;
+unsigned long t = 0;
+int getTouch = 0;
+int deviceStatus = 0;
 /* create an instance of PubSubClient client */
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 //set calib to detect current
-bool sendCalib(uint16_t (*touchRead)(uint8_t)) {
-  unsigned long touch_begin = millis();
-  //  if (touchRead <= touchRange) {
-  //    touch_begin = millis();
-  //  }
-  while (touchRead(TOUCH) < touchRange) {
-    continue;
-  }
-  unsigned long time_touch = millis() - touch_begin;
-//  if (time_touch > 1000) {
-//    Serial.print("Time: ");
-//    Serial.println(time_touch);
+//bool sendCalib() {
+//  unsigned long touch_begin = millis();
+//  //  if (digitalRead <= touchRange) {
+//  //    touch_begin = millis();
+//  //  }
+//  if (digitalRead(TOUCH)
+//  unsigned long time_touch = millis() - touch_begin;
+////  if (time_touch > 1000) {
+////    Serial.print("Time: ");
+////    Serial.println(time_touch);
+////}
+//  if (time_touch > 3000) return 1;
+//  else return 0;
 //}
-  if (time_touch > 3000) return 1;
-  else return 0;
-}
 
 void receivedCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message received: ");
@@ -64,7 +68,7 @@ void mqttconnect() {
     String clientId = "ESP32Client";
     /* connect now */
     //, mqttUser, mqttPassword
-    if (client.connect(clientId.c_str(), mqttUser, mqttPassword)) {
+    if (client.connect(clientId.c_str()/*, mqttUser, mqttPassword*/)) {
       Serial.println("connected");
       /* subscribe topic with default QoS 0*/
       client.subscribe("ESP32");
@@ -94,6 +98,7 @@ void setup() {
   }
   /* set led as output to control led on-off */
   pinMode(led, OUTPUT);
+  pinMode(TOUCH, INPUT);
 
   Serial.println("");
   Serial.println("WiFi connected");
@@ -106,7 +111,8 @@ void setup() {
     when client received subscribed topic */
   client.setCallback(receivedCallback);
   /*start DHT sensor */
-
+  MySerial.print("off\n");
+  deviceStatus = 0;
   //store time' begining
 
 }
@@ -119,50 +125,35 @@ void loop() {
   /* this function will listen for incomming
     subscribed topic-process-invoke receivedCallback */
   client.loop();
-
-  if (touchRead(TOUCH) < touchRange && state == false) {
-    //set calip
-    if (sendCalib(touchRead)) {
-      Serial.println("calib\n");
-      MySerial.print("calib\n");
-    }
-    // Toggle
-    else {
-      state = true;
-      light = !light;
-      MySerial.print(light ? "on\n" : "off\n");
-      Serial.print("Led: ");
-      Serial.print(light ? "on\n" : "off\n");
-    }
-  } else if (touchRead(TOUCH) >= touchRange) {
-    state = false;
+  
+  getTouch = digitalRead(22);
+  if(getTouch==1 && preTouch==0){
+    MySerial.print("on\n");
+    Serial.print("Led: ");
+    Serial.print("on\n");
   }
-
-  if (MySerial.available()) {
-    char data = 0;
-    unsigned long uart_begin = millis();
-    while (MySerial.available()) {
-      data = MySerial.read();
-      msg_from_stm32 += data;
-    }
-    if (data == '\n') {
-      unsigned long uart_time = millis() - uart_begin;
-      Serial.print("Message from STM32: ");
-      Serial.println(msg_from_stm32);
-
-      if ((msg_from_stm32 == "on\n" || msg_from_stm32 == "off\n") && (uart_begin < 10000)) {
-        Serial.println("Feed back OK!");
-        Serial.println("MQTT published!");
-        client.publish("espToServer", msg_from_stm32 == "on\n" ? "ON" : "OFF");
-      }
-    }
-    else if (msg_from_stm32 == "error\n") {
-      Serial.println("control error!");
-       client.publish("espToServer", "error");
-    }
-    data = '\0';
-    msg_from_stm32 = "";
+  if(getTouch==0 && preTouch==1){
+    MySerial.print("off\n");
+    Serial.print("Led: ");
+    Serial.print("off\n");
   }
+  preTouch = getTouch;
 
-  delay(100);
+  while (MySerial.available()) {
+    char data = MySerial.read();
+//    unsigned long uart_begin = millis();
+//    while (MySerial.available()) {
+      if (data == '|') {
+//        Serial.print("Message from STM32: ");
+        Serial.println(msg_from_stm32);
+        if ((msg_from_stm32 == "on" || msg_from_stm32 == "off" || msg_from_stm32 == "error")/* && (uart_begin < 10000)*/) {
+          Serial.println("Feed back OK!");
+          Serial.println("MQTT published!");
+          client.publish("espToServer", msg_from_stm32 == "on" ? "ON" : "OFF");
+        }
+        msg_from_stm32 = "";
+      } else 
+        msg_from_stm32 += data;
+//    } 
+  }
 }
