@@ -8,7 +8,7 @@ import moment from 'moment';
 import Switch from "react-switch";
 import axios from 'axios';
 
-var URL = 'http://localhost';
+var URL = '115.79.27.129';
 
 
 const socket = io(URL + ':3001', {autoConnect: true});

@@ -5,8 +5,8 @@ var express = require("express")
 var ip = require("ip")
 const mqtt = require('mqtt')
 var client = mqtt.connect({
-    host: "m12.cloudmqtt.com",
-    port: 12036
+    host: "115.79.27.129",
+    port: 9015
     ,
     username: "ulwrtaoc",
     password: "SUzhOrzguPJ9"
@@ -15,13 +15,14 @@ var client = mqtt.connect({
 client.on('connect', function () {
     console.log('mqtt connected!');
     client.subscribe('espToServer',function(data){
-        console.log(data+"aaa");
+        console.log("ESP32 to server: ", data);
+        io.sockets.emit("serverToWeb",data);
     });
 })
 
 
 app.use(function(req, res, next) { //allow cross origin requests
-    var allowedOrigins = ["192.168.43.48:3000", "192.168.37.1"];
+    var allowedOrigins = ["115.79.27.129:1998", "115.79.27.129"];
     var origin = req.headers.origin;
     console.log(origin);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -47,7 +48,6 @@ var timeOn = "";
 var tfOn = false;
 var timeOff = "";
 var tfOff = false;
-var timeOut = true;
 
 app.get('/getInitial', function(req, res){
     res.send({tf: tf, timeOn: timeOn, tfOn: tfOn, tfOff: tfOff, timeOff: timeOff});
@@ -71,21 +71,13 @@ io.on('connection', function (socket) {
         console.log(data);
         if (data.status == 'ON') {
             client.publish('ESP32', "ON");
+            io.sockets.emit("serverToWeb","ON");
             tf = true;
-            timeOut = true;
-            setTimeout(() => {
-                if(timeOut)
-                    io.sockets.emit("serverToWeb","OFF");
-            }, 5000);
         }
         else if (data.status == 'OFF') {
             client.publish('ESP32', "OFF");
+            io.sockets.emit("serverToWeb","OFF");
             tf = false;
-            timeOut = true;
-            setTimeout(() => {
-                if(timeOut)
-                    io.sockets.emit("serverToWeb","ON");
-            }, 5000);
         }
         else if (data.status == 'setTurnOn') {
             a = setTimeout(() => {
