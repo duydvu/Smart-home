@@ -1,16 +1,37 @@
-var app = require('express')(3000);
+var app = require('express')();
 var server = require('http').createServer(app);
 var io = require('socket.io')(3001);
-var express = require("express")
-var ip = require("ip")
-const mqtt = require('mqtt')
+var mqtt = require('mqtt');
+var cookieParser = require('cookie-parser');
+var bodyParser = require('body-parser');
+var bcrypt = require('bcrypt');
+var passport = require('passport');
+var LocalStrategy = require('passport-local').Strategy;
+var mqtt = require('mqtt');
+var flash = require('connect-flash');
+var crypto = require('crypto');
+var ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn;
+
+var model = require('./model')
+
+// Connect MQTT
 var client = mqtt.connect({
     host: "115.79.27.129",
     port: 9015
     ,
     username: "ulwrtaoc",
     password: "SUzhOrzguPJ9"
-})
+});
+
+// Connect Postgresql
+var pool = new Pool({
+    user: "ycscfgfdxqmeyq",
+    password: "979d555388a312ae8b02e153c842e3142f98316b2d3304257ae70ee9a6c40905",
+    database: "d1du91a3np5las",
+    port: 5432,
+    host: "ec2-107-21-95-70.compute-1.amazonaws.com",
+    ssl: true
+});
 
 client.on('connect', function () {
     console.log('mqtt connected!');
@@ -30,7 +51,7 @@ app.use(function(req, res, next) { //allow cross origin requests
     res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     res.setHeader("Access-Control-Allow-Credentials", true);
     next();
-  });
+});
 
 
 client.on('message', function (topic, message) {
@@ -53,6 +74,7 @@ app.get('/getInitial', function(req, res){
     res.send({tf: tf, timeOn: timeOn, tfOn: tfOn, tfOff: tfOff, timeOff: timeOff});
 })
 
+app.post('/signin', passport.authenticate('local'), function (req, res) { res.send('1');});
 
 io.on('connection', function (socket) {
     console.log("co nguoi ket noi")
@@ -117,4 +139,4 @@ io.on('connection', function (socket) {
 });
 console.log("Server nodejs started")
 
-app.listen(3000);
+app.listen(process.env.PORT || 3000);
