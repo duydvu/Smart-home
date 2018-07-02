@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-const sequelize = new Sequelize('d1du91a3np5las', 'ycscfgfdxqmeyq', '979d555388a312ae8b02e153c842e3142f98316b2d3304257ae70ee9a6c40905', {
+module.exports.sequelize = sequelize = new Sequelize('d1du91a3np5las', 'ycscfgfdxqmeyq', '979d555388a312ae8b02e153c842e3142f98316b2d3304257ae70ee9a6c40905', {
     host: 'ec2-107-21-95-70.compute-1.amazonaws.com',
     dialect: 'postgres',
     port: 5432,
@@ -18,17 +18,20 @@ const sequelize = new Sequelize('d1du91a3np5las', 'ycscfgfdxqmeyq', '979d555388a
     operatorsAliases: false
 });
 
-const User = sequelize.define('user', {
-    username: {
+module.exports.User = User = sequelize.define('user', {
+    id: {
         type: Sequelize.STRING,
         unique: true,
         primaryKey: true,
     },
+    username: {
+        type: Sequelize.STRING,
+        unique: true,
+    },
     password: Sequelize.STRING,
-    rule: Sequelize.STRING,
 });
 
-const Device = sequelize.define('device', {
+module.exports.Device = Device = sequelize.define('device', {
     id: {
         type: Sequelize.STRING,
         unique: true,
@@ -36,15 +39,19 @@ const Device = sequelize.define('device', {
     },
     name: Sequelize.STRING,
     status: Sequelize.BOOLEAN,
+    timerStatus: Sequelize.BOOLEAN,
+    time: Sequelize.INTEGER,
     user_id: {
         type: Sequelize.STRING,
         references: {
             // This is a reference to another model
             model: User,
             // This is the column name of the referenced model
-            key: 'username',
+            key: 'id',
             // This declares when to check the foreign key constraint. PostgreSQL only.
             deferrable: Sequelize.Deferrable.INITIALLY_IMMEDIATE
         }
     }
 })
+
+process.env.SYNC === 'true' && sequelize.sync()
