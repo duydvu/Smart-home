@@ -10,7 +10,6 @@ import axios from 'axios';
 
 var URL = '115.79.27.129';
 
-
 const socket = io(URL + ':3001', {autoConnect: true});
 socket.on('connect', () => {
     console.log(socket.id);
@@ -65,7 +64,6 @@ export default class Admin extends Component{
                 th.setState({on2 : false, time2 : moment()});                                
             }
         })
-        
     }
     
     getData(){
@@ -199,25 +197,70 @@ export default class Admin extends Component{
     render(){
         return(
             <div className="containerAdmin">
-
-                <div className={check(this.state.on)} onClick={this.handleChange}> </div>
-                                
-                <div className="containerTime">
-                    <p> Hẹn giờ bật đèn </p>
-                    <div className="time">
-                        <TimePicker className="timepicker" showSecond={false} value={this.state.time1} onChange={this.onChange1} />
-                        <Switch onChange={this.handleChange1} checked={this.state.on1}/>
+                <div className="containerBox">
+                    <div className={check(this.state.on)} onClick={this.handleChange}> </div>
+                                    
+                    <div className="containerTime">
+                        <p> Hẹn giờ bật </p>
+                        <div className="time">
+                            <TimePicker className="timepicker" showSecond={false} value={this.state.time1} onChange={this.onChange1} />
+                            <Switch onChange={this.handleChange1} checked={this.state.on1}/>
+                        </div>
                     </div>
+
+                    <div className="containerTime">
+                        <p> Hẹn giờ tắt</p>
+                        <div className="time1">
+                            <TimePicker className="timepicker" showSecond={false} value={this.state.time2} onChange={this.onChange2} />
+                            <Switch onChange={this.handleChange2} checked={this.state.on2}/>
+                        </div>
+                    </div>
+                    <div className="nameText"> Đèn phòng khách </div>
                 </div>
 
-                <div className="containerTime">
-                    <p> Hẹn giờ tắt đèn </p>
-                    <div className="time1">
-                        <TimePicker className="timepicker" showSecond={false} value={this.state.time2} onChange={this.onChange2} />
-                        <Switch onChange={this.handleChange2} checked={this.state.on2}/>
+                <div className="containerBox">
+                    <div className={check(this.state.on)} onClick={this.handleChange}> </div>
+                                    
+                    <div className="containerTime">
+                        <p> Hẹn giờ bật </p>
+                        <div className="time">
+                            <TimePicker className="timepicker" showSecond={false} value={this.state.time1} onChange={this.onChange1} />
+                            <Switch onChange={this.handleChange1} checked={this.state.on1}/>
+                        </div>
                     </div>
-                </div>
 
+                    <div className="containerTime">
+                        <p> Hẹn giờ tắt</p>
+                        <div className="time1">
+                            <TimePicker className="timepicker" showSecond={false} value={this.state.time2} onChange={this.onChange2} />
+                            <Switch onChange={this.handleChange2} checked={this.state.on2}/>
+                        </div>
+                    </div>
+                    <div className="nameText"> Đèn phòng khách </div>
+                </div>
+                
+
+                <div className="containerBox">
+                    <div className={check(this.state.on)} onClick={this.handleChange}> </div>
+                                    
+                    <div className="containerTime">
+                        <p> Hẹn giờ bật </p>
+                        <div className="time">
+                            <TimePicker className="timepicker" showSecond={false} value={this.state.time1} onChange={this.onChange1} />
+                            <Switch onChange={this.handleChange1} checked={this.state.on1}/>
+                        </div>
+                    </div>
+
+                    <div className="containerTime">
+                        <p> Hẹn giờ tắt</p>
+                        <div className="time1">
+                            <TimePicker className="timepicker" showSecond={false} value={this.state.time2} onChange={this.onChange2} />
+                            <Switch onChange={this.handleChange2} checked={this.state.on2}/>
+                        </div>
+                    </div>
+                    <div className="nameText"> Đèn phòng khách </div>
+                </div>
+                
             </div>
         )
     }

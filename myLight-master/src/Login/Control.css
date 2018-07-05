@@ -1,0 +1,53 @@
+.Control{
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    flex-wrap: wrap;
+}
+
+.Body{
+    height: 95%;
+    width: 100%;
+}
+
+.Menu{
+    height: 5%;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+}
+
+.buttonControl{
+    height: 1cm;
+    width: 50%;
+    background-image: url('./control.png');
+    background-repeat: no-repeat; 
+    background-size: 1cm 0.9cm;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-position: center; 
+    background-color: antiquewhite;
+    border-right-style: dashed;
+    border-top-style: dashed;
+    border-top-width: 0.015cm;
+}
+
+.buttonScan{
+    height: 1cm;
+    width: 50%;
+    background-image: url('./scan.png');
+    background-repeat: no-repeat; 
+    background-size: 1cm 0.9cm;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-position: center; 
+    background-color: antiquewhite;
+    border-top-style: dashed;
+    border-top-width: 0.015cm;
+}

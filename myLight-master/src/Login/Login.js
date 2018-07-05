@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import './Login.css';
-import Admin from './Admin/Admin';
+import Control from './Control';
+import URL from './URL';
+import axios from 'axios';
 
 class Login extends Component {
   constructor(props){
@@ -22,6 +24,17 @@ class Login extends Component {
   }
   
   isSuccess(){
+    axios.post(URL + '/signin', {
+      username: this.state.user,
+      password: this.state.password
+    })
+    .then(function (response) {
+      console.log(response);
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
+    
     this.setState({isSuccess : this.state.user === 'admin' && this.state.password === 'root'});
   }
 
@@ -32,8 +45,8 @@ class Login extends Component {
   }
 
   render() {
-    if (!this.state.isSuccess)
-      return <Admin />;
+    if (this.state.isSuccess)
+      return <Control />;
     else
       return(
         <div className="container">
