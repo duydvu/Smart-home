@@ -1,4 +1,6 @@
 var express = require('express');
+var https = require('https');
+var fs = require('fs');
 var session = require('express-session');
 var socketio = require('socket.io');
 var cookieParser = require('cookie-parser');
@@ -11,17 +13,33 @@ var mqtt = require('mqtt');
 var flash = require('connect-flash');
 var crypto = require('crypto');
 var ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn('/');
+var pem = require('pem');
 
-var { sequelize, User, Device } = require('./model');
+var { sequelize, User, Device, Register } = require('./model');
 
 var app = express();
 
 // Connect MQTT
 var client = mqtt.connect({
-    host: "115.79.27.129",
-    port: 9015,
-    username: "ulwrtaoc",
-    password: "SUzhOrzguPJ9"
+    host: "iot.eclipse.org",
+    port: 1883,
+});
+
+const io = socketio(
+    https.createServer({ 
+        key: fs.readFileSync('./key.pem', 'utf8'), 
+        cert: fs.readFileSync('./cert.pem', 'utf8'),
+    }, app).listen(process.env.PORT || 3000, () => {
+        console.log('Start on port 3000!')
+    })
+);
+
+app.use(function(req, res, next) { //allow cross origin requests
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader("Access-Control-Allow-Methods", "POST, PUT, OPTIONS, DELETE, GET");
+    res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.setHeader("Access-Control-Allow-Credentials", true);
+    next();
 });
 
 // Connect Postgresql
@@ -39,10 +57,12 @@ passport.use(new LocalStrategy({
     passwordField: 'password'
 },    
 function (username, password, cb) {
+    console.log(`${username} is logging in.`);
     User.findOne({
         where: {
             username
-        }
+        },
+        logging: false
     })
     .then(user => {
         if (!user) return cb(null, false);
@@ -88,30 +108,6 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
-client.on('connect', function () {
-    console.log('mqtt connected!');
-    client.subscribe('espToServer',function(data){
-        console.log("ESP32 to server: ", data);
-        io.sockets.emit("serverToWeb",data);
-    });
-})
-
-
-app.use(function(req, res, next) { //allow cross origin requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader("Access-Control-Allow-Methods", "POST, PUT, OPTIONS, DELETE, GET");
-    res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    res.setHeader("Access-Control-Allow-Credentials", true);
-    next();
-});
-
-
-client.on('message', function (topic, message) {
-    console.log(message.toString() + 'zzzz');
-    timeOut = false;
-    io.sockets.emit("serverToWeb", message.toString());
-})
-
 app.use(express.static("public"))
 app.set("view engine", "ejs")
 app.set("views", "./views")
@@ -120,13 +116,23 @@ app.post('/signin',
 passport.authenticate('local'),
 function (req, res) {
     console.log("Sign in: OK.");
-    res.sendStatus(200);
+    sequelize.query("SELECT * FROM devices WHERE user_id = ?", { 
+        replacements: [ req.user.id ], 
+        type: sequelize.QueryTypes.SELECT
+    })
+    .then(devices => {
+        console.log("Get Device: OK.");
+        res.json({ id: req.user.id, devices });
+    })
+    .catch(err => {
+        console.log(err.original);
+        res.sendStatus(500);
+    })
 });
 
 app.post('/signup', function (req, res) {
     const saltRounds = 10;
     const body = req.body;
-    
     bcrypt.genSalt(saltRounds, function(err, salt) {
         bcrypt.hash(body.password, salt, function(err, hash) {
             
@@ -142,7 +148,7 @@ app.post('/signup', function (req, res) {
                 });
             })
             .catch(err => {
-                console.log(err.original.error);
+                console.log(err.original);
                 console.log("Registration failed!")
                 res.sendStatus(400);
             })
@@ -157,40 +163,51 @@ app.get('/signout', function (req, res) {
     res.sendStatus(200);
 });
 
-app.get('/getDevice', ensureLoggedIn, function (req, res) {
-    const id = req.user.id;
-    sequelize.query("SELECT * FROM devices WHERE user_id = ?", { 
-        replacements: [ id ], 
-        type: sequelize.QueryTypes.SELECT
-    })
-    .then(devices => {
-        console.log("Get Device: OK.");
-        res.json({ devices });
-    })
-    .catch(err => {
-        console.log(err.original)
-        res.sendStatus(500)
-    })
-});
-
-app.get('/addDevice/:id/:name', ensureLoggedIn, function (req, res) {
-    const id = req.params.id, name = req.params.name;
+app.post('/addDevice', ensureLoggedIn, function (req, res) {
+    const id = req.body.id, name = req.body.name;
     const user_id = req.user.id;
-    Device.create({
-        id,
-        name,
-        status: false,
-        timerStatus: false,
-        time: 0,
-        user_id
+    Register.find({
+        where: {
+            id,
+            active: true   
+        }
     })
-    .then(user => {
-        console.log("Add Device: OK.");      
+    .then(register => {
+        if(register) {
+            console.log("Device registered, ready to add to Device table.");
+            return Device.create({
+                id,
+                name,
+                status: false,
+                timerStatusTurnOn: false,
+                timerStatusTurnOff: false,
+                timeOn: new Date(),
+                timeOff: new Date(),
+                user_id
+            }, {
+                logging: false
+            })
+        }
+        new Promise((resolve, reject) => reject({}, 404));
+    })
+    .then(device => {
+        console.log(`Added Device with id: ${device.id}, and name: ${device.name}`);      
         res.sendStatus(200);
+
+        console.log('Removing register after successful registration...');
+        return Register.destroy({
+            where: {
+                id
+            },
+            logging: false
+        })
     })
-    .catch(err => {
-        console.log(err.original);
-        res.sendStatus(400);
+    .then(rowNum => {
+        console.log(`Remove ${rowNum} Register: OK.`);      
+    })
+    .catch((err, status) => {
+        console.trace(err.original);
+        res.sendStatus(status || 400);
     })
 });
 
@@ -209,7 +226,7 @@ app.get('/removeDevice/:id', ensureLoggedIn, function (req, res) {
             res.sendStatus(400);
             return;
         }
-        console.log("Remove Device: OK.");      
+        console.log(`Remove ${rowNum} Device: OK.`);      
         res.sendStatus(200);
     })
     .catch(err => {
@@ -218,71 +235,152 @@ app.get('/removeDevice/:id', ensureLoggedIn, function (req, res) {
     })
 });
 
-const io = socketio(
-    app.listen(process.env.PORT || 3000, function () {
-        console.log('Node app is running on port', process.env.PORT || 3000);
-    })
-);
+
 
 console.log("Server nodejs started");
 
+client.on('connect', function () {
+    console.log('MQTT connected!');
+    client.subscribe('espToServer');
+});
+
+client.on('message', function (topic, message) {
+    var json = JSON.parse(message.toString());
+    console.log(`Received a publish packet on topic ${topic}`, json);
+    switch (topic) {
+        case 'espToServer':
+            if(json.content === 'ACTIVE') {
+                Device.findById(json.id)
+                .then(item => {
+                    if(item) {
+                        console.log('Device was activated.');
+                        client.publish('ESP8266', 'ACTIVED');
+                        return new Promise((resolve) => resolve(true));
+                    }
+                    return Register.findById(json.id);
+                })
+                .then((item) => {
+                    if(item === true) return;
+                    if(item) {
+                        console.log('Found an existing register device.');
+                        return new Promise((resolve) => resolve(true));
+                    }
+                    return Register.create({
+                        id: json.id,
+                        expire: new Date(new Date() + 30000)
+                    });
+                })
+                .then(register => {
+                    if(register !== true)
+                        console.log("Add Register: OK.");
+                })
+                .catch(err => {
+                    console.log(err.original);
+                    client.publish('error', 'Database error when registering device!');
+                });
+            }
+            else if(json.content === 'ON' || json.content === 'OFF') {
+                Device.update({
+                    status: json.content === 'ON' ? true : false
+                }, {
+                    where: {
+                        id: json.id
+                    }
+                })
+                .then(device => {
+                    console.log(`Update device ${json.id} to ${json.content}: OK.`);
+                    io.sockets.emit("serverToWeb", json);
+                })
+                .catch(err => {
+                    console.log(err.original);
+                    client.publish('error', 'Database error when update device status!');
+                });
+            }
+        default:
+            break;
+    }
+});
+
 io.on('connection', function (socket) {
-    console.log("co nguoi ket noi")
-    // socket.on("buttonsenddata", function(data){
-    //     console.log(data)
-    //     io.sockets.emit("serversendbutton", data)
-    //     client.publish('ESP32',data)
-    // })
-    // client.on("message",function(data){
-    //     console.log(data.toString.toString()+"console at web");
-    //     io.sockets.emit("serverToWeb",data.toString());
-    // })
+    console.log("A user connected.")
     
     socket.on("webToServer", function (data) {
-        var a, b;
-        console.log(data);
-        if (data.status == 'ON') {
-            client.publish('ESP32', "ON");
-            io.sockets.emit("serverToWeb","ON");
+        console.log('Web to server: ', data)
+        var arr = []
+        if (data.content == 'ON') {
+            client.publish('ESP32', JSON.stringify(data));
             tf = true;
         }
-        else if (data.status == 'OFF') {
-            client.publish('ESP32', "OFF");
-            io.sockets.emit("serverToWeb","OFF");
+        else if (data.content == 'OFF') {
+            client.publish('ESP32', JSON.stringify(data));
             tf = false;
         }
-        else if (data.status == 'setTurnOn') {
-            a = setTimeout(() => {
-                client.publish('ESP32', "ON");
-                io.sockets.emit("serverToWeb", 'successTurnOn');
-            }, data.time)
-            timeOn = data.timeOn;
-            var x = {status: 'setTurnOn', timeOn: timeOn};
-            io.sockets.emit("serverToWeb", x);
-            tfOn = true;
+        else if (data.content == 'setTurnOn') {
+            arr.push({
+                id: data.id,
+                turnOn: setTimeout(() => {
+                    data.content = 'ON';
+                    client.publish('ESP32', JSON.stringify(data));
+                    arr = arr.filter(e => e.id != data.id);
+                }, data.time - new Date())
+            })
         }
-        else if (data.status == 'setTurnOff') {
-            b = setTimeout(() => {
-                client.publish('ESP32', "OFF");
-                io.sockets.emit("serverToWeb", 'successTurnOff');
-            }, data.time)
-            timeOff = data.timeOff;
-            var x = {status: 'setTurnOff', timeOff: timeOff};
-            io.sockets.emit("serverToWeb", x);
-            tfOff = true;
+        else if (data.content == 'setTurnOff') {
+            arr.push({
+                id: data.id,
+                turnOn: setTimeout(() => {
+                    data.content = 'OFF';
+                    client.publish('ESP32', JSON.stringify(data));
+                    arr = arr.filter(e => e.id != data.id);
+                }, data.time - new Date())
+            })
         }
-        else if (data.status == 'cancelTurnOn'){
-            clearTimeout(a);
-            var x = {status: 'cancelTurnOn'};
-            io.sockets.emit("serverToWeb", x);
-            tfOn = false;
+        else if (data.content == 'cancelTurnOn'){
+            var index, target = arr.filter((e, i) => {
+                if(e.id == data.id) {
+                    index = i;
+                    return true;
+                }
+            })[0];
+            if(!target) return;
+            clearTimeout(target.turnOn);
+            arr.splice(index, 1);
         }
-        else if (data.status == 'cancelTurnOff'){
-            clearTimeout(b);
-            var x = {status: 'cancelTurnOff'};
-            io.sockets.emit("serverToWeb", x);
-            tfOff = false;
+        else if (data.content == 'cancelTurnOff'){
+            var index, target = arr.filter((e, i) => {
+                if(e.id == data.id) {
+                    index = i;
+                    return true;
+                }
+            })[0];
+            if(!target) return;
+            clearTimeout(target.turnOff);
+            arr.splice(index, 1);
         }
-        io.sockets.emit("serverToWeb", data);
     })
 });
+
+app.get('/', (req, res) => {
+    client.publish('ESP8266', 'ON');
+    res.sendStatus(200);
+})
+
+setInterval(() => {
+    Register.update({
+        active: false
+    }, {
+        where: {
+            expire: {
+                [sequelize.Op.lt]: new Date()
+            }
+        },
+        logging: false
+    })
+    .then(rowNum => {
+        console.log('Removing inactive registers...');
+        console.log(`Remove ${rowNum} Registers: OK.`);      
+    })
+    .catch(err => {
+        console.trace(err.original);
+    })
+}, 30000);

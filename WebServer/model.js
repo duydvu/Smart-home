@@ -39,8 +39,16 @@ module.exports.Device = Device = sequelize.define('device', {
     },
     name: Sequelize.STRING,
     status: Sequelize.BOOLEAN,
-    timerStatus: Sequelize.BOOLEAN,
-    time: Sequelize.INTEGER,
+    timerStatusTurnOn: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+    },
+    timerStatusTurnOff: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+    },
+    timeOn: Sequelize.DATE,
+    timeOff: Sequelize.DATE,
     user_id: {
         type: Sequelize.STRING,
         references: {
@@ -52,6 +60,20 @@ module.exports.Device = Device = sequelize.define('device', {
             deferrable: Sequelize.Deferrable.INITIALLY_IMMEDIATE
         }
     }
+})
+
+// Registering Devices, waiting for user to add them
+module.exports.Register = Register = sequelize.define('register', {
+    id: {
+        type: Sequelize.STRING,
+        unique: true,
+        primaryKey: true
+    },
+    expire: {
+        type: Sequelize.DATE,
+        allowNull: false,
+    },
+    active: Sequelize.BOOLEAN
 })
 
 process.env.SYNC === 'true' && sequelize.sync()
