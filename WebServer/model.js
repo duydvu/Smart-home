@@ -75,5 +75,3 @@ module.exports.Register = Register = sequelize.define('register', {
     },
     active: Sequelize.BOOLEAN
 })
-
-process.env.SYNC === 'true' && sequelize.sync()
