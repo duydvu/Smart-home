@@ -1,0 +1,75 @@
+API:
+
+HTTP:
+1.  URL: /signin
+    Method: POST
+    Mô tả: Đăng nhập
+    Tham số: 
+    - username: tên tài khoản - string
+    - password: mật khẩu - string
+    Response:
+    - id: Định danh của tài khoản trong database - string
+    - devices: Danh sách thiết bị có trong tài khoản - Array
+
+2.  URL: /signup
+    Method: POST
+    Mô tả: Đăng ký tài khoản
+    Tham số:
+    - username: tên tài khoản - string
+    - password: mật khẩu - string
+    Response:
+    - id: Định danh của tài khoản trong database - string
+
+3.  URL: /signout
+    Method: GET
+    Mô tả: Đăng xuất khỏi tài khoản
+    Tham số: none
+    Response:
+    - HTTP status code: 200
+
+4.  URL: /getDevice
+    Method: POST
+    Mô tả: Lấy danh sách thiết bị của tài khoản sau khi đăng nhập
+    Tham số: none
+    Response
+    - devices: Danh sách thiết bị có trong tài khoản - Array
+
+5.  URL: /addDevice
+    Method: POST
+    Mô tả: Thêm thiết bị vào tài khoản
+    Tham số:
+    - id: Định danh của thiết bị khi mua - string
+    - name: Tên của thiết bị do người dùng đặt - string
+    Response:
+    - HTTP status code: 200
+
+6.  URL: /removeDevice
+    Method: POST
+    Mô tả: Xóa thiết bị khỏi tài khoản
+    Tham số:
+    - id: Định danh của thiết bị - string
+    Response:
+    - HTTP status code: 200
+
+Socket:
+Các API sử dụng chung 1 topic tên là "webToServer" dùng để gửi data từ server đến client và "serverToWeb" dùng để gửi data từ client đến server.
+Định dạng của data như sau:
+- id: Định danh của thiết bị của người dùng - string.
+- content: chứa nội dung tác vụ cần làm đối với thiết bị đó - string.
+Content gồm những giá tri như sau:
+- "ON": Bật thiết bị
+- "OFF": Tắt thiết bị
+- "setTurnOn": Hẹn giờ bật thiết bị
+- "setTurnOff": Hẹn giờ tắt thiết bị
+- "cancelTurnOn": Hủy hẹn giờ bật thiết bị 
+- "cancelTurnOff": Hủy hẹn giờ tắt thiết bị
+
+MQTT:
+Bao gồm 2 topic là "espToServer" dùng để gửi data từ thiết bị đến server, và "ESP8266" dùng để gửi data từ server đến thiết bị.
+Định dạng của data như sau:
+- id: Định danh của thiết bị của người dùng - string.
+- content: chứa nội dung tác vụ cần làm đối với thiết bị đó - string.
+Content gồm những giá tri như sau:
+- "ACTIVE": Khi khởi động thiết bị thì thiết bị gửi đến server để kích hoạt.
+- "ACTIVED": Nếu thiết bị đã được kích hoạt thì server sẽ gửi đến thiết bị để thiết bị bắt đầu hoạt động bình thường.
+- "ON" và "OFF": Server gửi đến để điều khiển bật tắt thiết bị và thiết bị gửi lại để feedback trạng thái thật của nó.

@@ -1,0 +1,14 @@
+User vẫn như cũ nhé.
+
+Device xóa timerStatus với time đi, thay bằng mấy cái sau đây:
+- timerStatusTurnOn: trạng thái hẹn giờ để bật thiết bị, nếu bằng true thì khi tới thời điểm timeOn thiết bị sẽ tự động bật, nếu bằng false thì không có gì xảy ra.
+- timerStatusTurnOff: trạng thái hẹn giờ để bật thiết bị, nếu bằng true thì khi tới thời điểm timeOff thiết bị sẽ tự động bật, nếu bằng false thì không có gì xảy ra.
+- timeOn: thời điểm hen giờ để bật thiết bị.
+- timeOff: thời điểm hẹn giờ để tắt thiết bị.
+
+Table Register: là table dùng để chứa các record của các thiết bị đã đăng ký và chờ người sở hữu thêm thiết bị đó vào tài khoản của họ.
+Khi người dùng mua thiết bị về và bật thiết bị lên thì nó sẽ gửi lên server để thêm thiết bị này vào Register, sau đó người dùng sẽ phải dùng web 
+hoặc app để thêm thiết bị đó vào tài khoản của họ hay nói cách khác là chuyển thông tin của thiết bị từ table Register sang table Device.
+- id: ID của thiết bị.
+- expire: Thời điểm hết hiệu lực của record, nếu sau thời gian này mà người dùng thêm thiết bị này thì sẽ không được chấp nhận.
+- active: biến Boolean dùng để chỉ record đã hết hiệu lực hay chưa, true là record còn hiệu lực và ngược lại.

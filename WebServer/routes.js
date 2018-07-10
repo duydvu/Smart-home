@@ -6,7 +6,7 @@ var bcrypt = require('bcrypt');
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 var crypto = require('crypto');
-var ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn('/admin');
+var ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn('/login');
 var flash = require('connect-flash');
 var { Pool } = require('pg')
 
@@ -88,9 +88,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
-app.use(express.static("public"))
+app.use(express.static("./build"))
 app.set("view engine", "ejs")
-app.set("views", "./views")
+app.set("views", "./build")
 
 app.post('/signin',
 passport.authenticate('local'),
@@ -110,11 +110,11 @@ function (req, res) {
     })
 });
 
-app.post('/getID',
-function (req, res) {
+app.post('/getDevice', ensureLoggedIn, function (req, res) {
     sequelize.query("SELECT * FROM devices WHERE user_id = ?", { 
-        replacements: [ req.body.id ], 
-        type: sequelize.QueryTypes.SELECT
+        replacements: [ req.user.id ], 
+        type: sequelize.QueryTypes.SELECT,
+        logging: false
     })
     .then(devices => {
         console.log("Get Device: OK.");
@@ -126,8 +126,6 @@ function (req, res) {
     })
 });
 
-var fake_user_id = 3;
-
 app.post('/signup', function (req, res) {
     const saltRounds = 10;
     const body = req.body;
@@ -135,13 +133,12 @@ app.post('/signup', function (req, res) {
         bcrypt.hash(body.password, salt, function(err, hash) {
             
             User.create({
-                id: fake_user_id,
+                id: Math.floor(Math.random() * 1000000).toString(),
                 username: body.username,
                 password: hash
             })
             .then(user => {
                 console.log("Registration succeed!");
-                fake_user_id += 1;
                 res.json({
                     id: user.id
                 });
@@ -162,9 +159,9 @@ app.get('/signout', function (req, res) {
     res.sendStatus(200);
 });
 
-app.post('/addDevice', function (req, res) {
+app.post('/addDevice', ensureLoggedIn, function (req, res) {
     const id = req.body.id, name = req.body.name;
-    const user_id = req.body.user_id;
+    const user_id = req.user.id;
     Register.find({
         where: {
             id,
@@ -210,8 +207,8 @@ app.post('/addDevice', function (req, res) {
     })
 });
 
-app.get('/removeDevice/:id', ensureLoggedIn, function (req, res) {
-    const id = req.params.id;
+app.post('/removeDevice', ensureLoggedIn, function (req, res) {
+    const id = req.body.id;
     const user_id = req.user.id;
     Device.destroy({
         where: {
@@ -233,5 +230,17 @@ app.get('/removeDevice/:id', ensureLoggedIn, function (req, res) {
         res.sendStatus(500);
     })
 });
+
+app.get('/', ensureLoggedIn, (req, res) => {
+    res.render('index')
+})
+
+app.get('/login', (req, res) => {
+    res.render('index')
+})
+
+app.get('/signup', (req, res) => {
+    res.render('index')
+})
 
 module.exports = app

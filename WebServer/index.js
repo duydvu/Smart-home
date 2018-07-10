@@ -12,6 +12,10 @@ var client = mqtt.connect({
 });
 
 const io = socketio(
+    process.env.NODE_ENV == 'production' ?
+    app.listen(process.env.PORT || 3000, () => {
+        console.log(`Start on port ${process.env.PORT || 3000}!`)
+    }) :
     https.createServer({ 
         key: fs.readFileSync('./key.pem', 'utf8'), 
         cert: fs.readFileSync('./cert.pem', 'utf8'),
@@ -28,7 +32,13 @@ client.on('connect', function () {
 });
 
 client.on('message', function (topic, message) {
-    var json = JSON.parse(message.toString());
+    try {
+        var json = JSON.parse(message.toString());
+    }
+    catch(e) {
+        console.log(e.message);
+        return;
+    }
     console.log(`Received a publish packet on topic ${topic}`, json);
     switch (topic) {
         case 'espToServer':
@@ -47,6 +57,7 @@ client.on('message', function (topic, message) {
                     if(item) {
                         console.log('Found an existing register device.');
                         return Register.update({
+                            expire: new Date(new Date() + 30000),
                             active: true
                         }, {
                             where: {
@@ -57,7 +68,8 @@ client.on('message', function (topic, message) {
                     }
                     return Register.create({
                         id: json.id,
-                        expire: new Date(new Date() + 30000)
+                        expire: new Date(new Date() + 30000),
+                        active: true
                     });
                 })
                 .then(register => {
@@ -75,12 +87,14 @@ client.on('message', function (topic, message) {
                     status: json.content === 'ON' ? true : false
                 }, {
                     where: {
-                        id: json.id
+                        id: json.id,
                     }
                 })
                 .then(device => {
-                    console.log(`Update device ${json.id} to ${json.content}: OK.`);
-                    io.sockets.emit("serverToWeb", json);
+                    if(device.length) {
+                        console.log(`Update device ${json.id} to ${json.content}: OK.`);
+                        io.sockets.emit("serverToWeb", json);
+                    }
                 })
                 .catch(err => {
                     console.log(err.original);
@@ -136,7 +150,7 @@ io.on('connection', function (socket) {
                 turnOn: setTimeout(() => {
                     console.log("Turning on...");
                     data.content = 'TurnedOn';
-                    client.publish('ESP8266', JSON.stringify(data));
+                    client.publish('ESP8266', JSON.stringify({ id: data.id, content: 'ON'}));
                     io.sockets.emit("serverToWeb", data);
                     Device.update({
                         status: true,
@@ -166,7 +180,7 @@ io.on('connection', function (socket) {
                 turnOff: setTimeout(() => {
                     console.log("Turning off...");
                     data.content = 'TurnedOff';
-                    client.publish('ESP8266', JSON.stringify(data));
+                    client.publish('ESP8266', JSON.stringify({ id: data.id, content: 'OFF' }));
                     io.sockets.emit("serverToWeb", data);
                     Device.update({
                         status: false,
