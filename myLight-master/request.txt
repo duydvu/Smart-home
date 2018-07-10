@@ -1,0 +1,126 @@
+1. Dang nhap
+url: /signin
+request: {
+	type: post,
+	data: {
+		username: string,
+		password: string
+	}
+},
+response: {
+	success: {
+		id: string // id cua nguoi dung
+		devices: [
+			id: string, // id cua thiet bi
+			name: string, // ten cua thiet bi
+			status: boolean, // trang thai cua thiet bi
+			timerStatusTurnOff: boolean, // trang thai hen gio cua thiet bi
+			timerStatusTurnOn: boolean, // false: tat, true: mo
+			timeOn: Date // thoi diem hen gio cua thiet bi trong ngay (VD: 0 => tat luc 0am, 3600 => tat luc 1am)
+			timeOff: Date
+		]
+	},
+	fail: {
+		statusCode: 401
+	}
+}
+
+2. Dang ky
+url: /signup
+request: {
+	type: post,
+	data: {
+		id: string, // id cua nguoi dung tao ngau nhien
+		username: string,
+		password: string
+	}
+},
+response: {
+	success: {
+		id: string // id cua nguoi dung vua dang ky
+	},
+	fail: {
+		statusCode: 400
+	}
+}
+
+3. Dang xuat
+url: /signout
+request: {
+	type: get,
+}
+response: {
+	success: {
+		statusCode: 200
+	},
+	fail: {
+		statusCode: 400
+	}
+}
+
+4. Get thiet bi
+url: /getDevice
+request: {
+	type: get,
+	data: {
+		// id: string // id cua nguoi dung can get thiet bi
+		// Cái này không cần vì id nằm sẵn trong req.user.id sau khi đăng nhập rồi!
+	}
+},
+response: {
+	success: {
+		devices: [
+			type: Array,
+			{
+				id: string, // id cua thiet bi
+				name: string, // ten cua thiet bi
+				status: boolean, // trang thai cua thiet bi
+				timerStatusTurnOff: boolean, // trang thai hen gio cua thiet bi
+				timerStatusTurnOn: boolean, // false: tat, true: mo
+				timeOn: Date // thoi diem hen gio cua thiet bi trong ngay (VD: 0 => tat luc 0am, 3600 => tat luc 1am)
+				timeOff: Date
+			}
+		]
+	},
+	fail: {
+		statusCode: 400
+	}
+}
+
+5. Them thiet bi
+url: /addDevice
+request: {
+	type: post,
+	data: {
+		id: string, // id cua thiet bi
+		name: string // ten thiet bi
+	}
+}
+response: {
+	success: {
+		statusCode: 200
+	},
+	fail: {
+		statusCode: 400
+	}
+}
+
+6. Xoa thiet bi
+url: /removeDevice/:id
+request: {
+	type: get,
+	data: {
+		id: string, // id cua thiet bi
+	}
+}
+response: {
+	success: {
+		statusCode: 200
+	},
+	fail: {
+		statusCode: 400
+	}
+}
+
+//// CHÚ Ý
+// Giao tiếp socket vẫn như cũ nhưng gửi thêm trường id là id của thiết bị nữa nhé

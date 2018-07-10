@@ -1,5 +1,5 @@
 .ScanQR {
-    height: 95%;
+    height: 90%;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -29,7 +29,6 @@
 .inputText{
     height: 0.7cm;
     width: 5cm;
-    border-style: dotted;
 }
 
 .buttonSubmit{

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import './Login.css';
+import './SignUp.css';
 import Control from './Control';
 import axios from 'axios';
 import Notifications, {notify} from 'react-notify-toast';
@@ -7,7 +7,7 @@ import Notifications, {notify} from 'react-notify-toast';
 var myModule = require('./URLhost');
 var URLhost = myModule.URLhost;
 
-class Login extends Component {
+class SignUp extends Component {
   constructor(props){
     super(props);
 
@@ -29,7 +29,7 @@ class Login extends Component {
   
   isSuccess(){
     var history = this.props.history;
-    axios.post(URLhost + '/signin', {
+    axios.post(URLhost + '/signup', {
       username: this.state.user,
       password: this.state.password
     })
@@ -40,8 +40,8 @@ class Login extends Component {
     })
     .catch(function (error) {
       console.log(error);
-      if (error.response && error.response.status == 401){
-        notify.show("Sai tài khoản hoặc mật khẩu");
+      if (error.response && error.response.status == 400){
+        notify.show("Trùng tên tài khoản");
       }
       else{
         notify.show('Kiểm tra lại mạng');
@@ -64,14 +64,14 @@ class Login extends Component {
           <div className="spacelg"> </div>
           <div className="boxlogin"> 
             <div className="toplogin"> 
-              <p className="text"> LOGIN </p>
+              <p className="text"> SignUp </p>
             </div>
             <div className="bodylogin"> 
               <input type="text" onKeyPress={this._handleKeyPress} name="user" 
                 className="inputtext" onChange={this.getUser}/>
               <input type="password" onKeyPress={this._handleKeyPress} name="password"
                 className="inputtext" onChange={this.getPassword}/>
-              <button className="button" onClick={this.isSuccess}> Login </button>
+              <button className="button" onClick={this.isSuccess}> SignUp </button>
             </div>
           </div>
           <div className="spacelg"> </div>
@@ -79,7 +79,7 @@ class Login extends Component {
         <div className="spacebg"></div>
       </div>
     );
-  } 
-}
+  }
+} 
 
-export default Login;
+export default SignUp;

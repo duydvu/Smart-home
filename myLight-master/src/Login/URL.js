@@ -1,1 +1,0 @@
-export default URL = "https://192.168.43.199:3000"
